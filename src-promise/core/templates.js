@@ -2,6 +2,7 @@ var fs = require('fs');
 var minimatch = require('minimatch');
 var path = require('path');
 var Promise = require('bluebird');
+var chalk = require('chalk');
 
 var {extend, readdirRecursiveSync} = require('./utils');
 
@@ -26,23 +27,28 @@ var loadTemplates = function(env) {
 
   var loadTemplate = function(filepath){
     return Promise.coroutine(function*(){
-      var plugin = null;
-      for (var i = env.templatePlugins.length - 1; i >= 0; i--) {
-        var templatePlugin = env.templatePlugins[i];
-        if(minimatch(filepath.relative, templatePlugin.pattern)){
-          plugin = templatePlugin;
-          break;
+      try{
+        var plugin = null;
+        for (var i = env.templatePlugins.length - 1; i >= 0; i--) {
+          var templatePlugin = env.templatePlugins[i];
+          if(minimatch(filepath.relative, templatePlugin.pattern)){
+            plugin = templatePlugin;
+            break;
+          }
         }
+        if(!plugin) {
+          env.logger.info(`skipping template: ${chalk.bold(filepath.relative)}`)
+        } else {
+          var template = plugin["class"].fromFile(filepath);
+          template = yield Promise.cast(template);
+          templates[filepath.relative] = template
+          return template;
+        }
+      } catch(error){
+        error.message = "template " + filepath.relative + ": " + error.message;
+        throw error;
       }
-      var template = plugin["class"].fromFile(filepath);
-      template = yield Promise.cast(template);
-      templates[filepath.relative] = template
-      return template;
-    })()
-    .catch((error) => {
-      error.message = "template " + filepath.relative + ": " + error.message;
-      throw err;
-    });
+    })();
   }
   var filenames = resolveFilenames(readdirRecursiveSync(env.templatesPath));
   return Promise.all(filenames.map(loadTemplate))

@@ -112,7 +112,10 @@ var loadContent = function(env, filepath) {
     instance && (instance.__env = env)
       && (instance.__plugin = plugin)
       && (instance.__filename = filepath.full);
-
+    
+    if(!instance) {
+      throw new Error(`cannot load content: ${filepath.relative}`);
+    }
     ;
     return instance;
   })()

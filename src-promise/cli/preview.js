@@ -1,7 +1,9 @@
 (function() {
-  var Config, async, commonOptions, commonUsage, extendOptions, loadEnv, logger, options, preview, ref, usage, util;
+  var Config, Promise, async, commonOptions, commonUsage, extendOptions, loadEnv, logger, options, preview, ref, usage, util;
 
   util = require('util');
+
+  Promise = require('bluebird');
 
   Config = require('./../core/config').Config;
 
@@ -22,14 +24,17 @@
   extendOptions(options, commonOptions);
 
   preview = function(argv) {
-    logger.info('starting preview server');
-    try{
-      var env = loadEnv(argv);
-      env.preview();
-    } catch(error){
-      logger.error(error.message, error);
-      return process.exit(1);
-    }
+    return Promise.coroutine(function*(){
+      logger.info('starting preview server');
+      try{
+        var env = loadEnv(argv);
+        yield env.preview()
+        logger.info('preview started');
+      } catch(error){
+        logger.error(error.message, error);
+        return process.exit(1);
+      }
+    })();
   };
 
   module.exports = preview;
