@@ -148,51 +148,59 @@ var buildLookupMap = function(contents) {
       locals = result;
       block.localsLoad = false;
     };
-    contentWatcher = chokidar.watch(env.contentsPath, {
-      ignored: function(path) {
-        var i, len, pattern, ref1;
-        ref1 = env.config.ignore;
-        for (i = 0, len = ref1.length; i < len; i++) {
-          pattern = ref1[i];
-          if (minimatch(env.relativeContentsPath(path), pattern)) {
-            return true;
-          }
-        }
-        return false;
-      },
-      ignoreInitial: true
-    });
-    contentWatcher.on('all', function(type, filename) {
-      if (block.contentsLoad) {
-        return;
-      }
-      return loadContents()
-      .then(function() {
-        var content, contentFilename, i, len, ref1;
-        contentFilename = null;
-        if ((filename != null)) {
-          ref1 = ContentTree.flatten(contents);
+
+    if(!env.config.noWatchContents){
+      contentWatcher = chokidar.watch(env.contentsPath, {
+        ignored: function(path) {
+          var i, len, pattern, ref1;
+          ref1 = env.config.ignore;
           for (i = 0, len = ref1.length; i < len; i++) {
-            content = ref1[i];
-            if (content.__filename === filename) {
-              contentFilename = content.filename;
-              break;
+            pattern = ref1[i];
+            if (minimatch(env.relativeContentsPath(path), pattern)) {
+              return true;
             }
           }
-        }
-        return changeHandler(null, contentFilename);
+          return false;
+        },
+        ignoreInitial: true
       });
-    });
-    templateWatcher = chokidar.watch(env.templatesPath, {
-      ignoreInitial: true
-    });
-    templateWatcher.on('all', function(event, path) {
-      if (!block.templatesLoad) {
-        loadTemplates();
-        changeHandler(null, path);
-      }
-    });
-    if (env.config.views != null) {
+      contentWatcher.on('all', function(type, filename) {
+        if (block.contentsLoad) {
+          return;
+        }
+        return loadContents(function(error) {
+          var content, contentFilename, i, len, ref1;
+          contentFilename = null;
+          if ((error == null) && (filename != null)) {
+            ref1 = ContentTree.flatten(contents);
+            for (i = 0, len = ref1.length; i < len; i++) {
+              content = ref1[i];
+              if (content.__filename === filename) {
+                contentFilename = content.filename;
+                break;
+              }
+            }
+          }
+          return changeHandler(error, contentFilename);
+        });
+      });
+    } else { // if !env.config.noWatchContents 
+      contentWatcher = undefined;
+    } 
+
+    if(!env.config.noWatchTemplates){
+      templateWatcher = chokidar.watch(env.templatesPath, {
+        ignoreInitial: true
+      });
+      templateWatcher.on('all', function(event, path) {
+        if (!block.templatesLoad) {
+          return loadTemplates(changeHandler);
+        }
+      });
+    } else { // if !env.config.noWatchTemplates
+      templateWatcher = undefined;
+    }
+    if (env.config.views != null && !env.config.noWatchViews) {
       viewsWatcher = chokidar.watch(env.resolvePath(env.config.views), {
         ignoreInitial: true
       });
@@ -203,6 +211,8 @@ var buildLookupMap = function(contents) {
           changeHandler(null, path);
         }
       });
+    } else { 
+      viewsWatcher = undefined;
     }
     contentHandler = function(request, response) {
       return Promise.coroutine(function*(){
@@ -325,9 +335,10 @@ var buildLookupMap = function(contents) {
       loadViews();
       loadLocals();
       requestHandler.destroy = function() {
-        contentWatcher.close();
-        templateWatcher.close();
-        return viewsWatcher != null ? viewsWatcher.close() : void 0;
+        contentWatcher && contentWatcher.close();
+        templateWatcher && templateWatcher.close();
+        viewsWatcher && viewsWatcher.close();
+        // return viewsWatcher != null ? viewsWatcher.close() : void 0;
       };
       return requestHandler;
     })();
@@ -414,4 +425,5 @@ var buildLookupMap = function(contents) {
     run: run,
     setup: setup
   };
+
 
