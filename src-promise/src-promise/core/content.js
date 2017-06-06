@@ -112,7 +112,10 @@ var loadContent = function(env, filepath) {
     instance && (instance.__env = env)
       && (instance.__plugin = plugin)
       && (instance.__filename = filepath.full);
-
+    
+    if(!instance) {
+      throw new Error(`cannot load content: ${filepath.relative}`);
+    }
     ;
     return instance;
   })()
@@ -230,7 +233,7 @@ var loadContent = function(env, filepath) {
         } else {
           throw new Error("Invalid file " + filepath.full + ".");
         }
-      })();
+      })()
     };
     createInstances = function(filenames) {
       return Promise.all(filenames.map(createInstance));
@@ -240,7 +243,7 @@ var loadContent = function(env, filepath) {
           resolveFilenames(
             readDirectory()
     )))
-      .then(() => tree);
+      .then(() => tree)
   };
 
   ContentTree.inspect = function(tree, depth) {

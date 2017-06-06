@@ -121,7 +121,8 @@ var buildLookupMap = function(contents) {
         contents = result;
         lookup = buildLookupMap(result);
         block.contentsLoad = false;  
-      })();
+      })()
+      ;
     };
     loadTemplates = function() {
       return Promise.coroutine(function*(){
@@ -337,7 +338,7 @@ var buildLookupMap = function(contents) {
         // return viewsWatcher != null ? viewsWatcher.close() : void 0;
       };
       return requestHandler;
-    })();
+    })()
   };
 
   run = function(env) {
@@ -385,27 +386,39 @@ var buildLookupMap = function(contents) {
       }
     };
     start = function() {
-      env.loadPlugins();
-      return setup(env)
-      .then(function(handler1){
-        handler = handler1;
+      return Promise.coroutine(function*(){
+        yield env.loadPlugins();
+        handler = yield setup(env);
         server = http.createServer(handler);
         enableDestroy(server);
+        var defer = Promise.defer();
         server.on('error', function(error) {
           env.emit('serverError', error);
+          defer.reject(error);
         });
         server.on('listening', function() {
           env.emit('serverListening');
+          defer.resolve();
         });
         var retVal = server.listen(env.config.port, env.config.hostname);
+        yield defer.promise;
         retVal.restart = restart;
         return retVal;
-      })
+      })()
     };
+    
     process.on('uncaughtException', function(error) {
+      console.log("uncaught exception");
       env.logger.error(error.message, error);
       return process.exit(1);
     });
+    process.on("unhandledRejection", function(reason, promise) {
+      // See Promise.onPossiblyUnhandledRejection for parameter documentation
+      console.log("unhandled rejection");
+      env.logger.error(reason);
+      return process.exit(1);
+    });
+
     env.logger.verbose('starting preview server');
     return start()
     .then(function(server){
@@ -414,7 +427,7 @@ var buildLookupMap = function(contents) {
       env.logger.info("server running on: " + (chalk.bold(serverUrl)));
       env.emit("runFinished", server);
       return server;
-    });
+    })
   };
 
   module.exports = {

@@ -175,21 +175,32 @@ class Environment extends EventEmitter{
     }
     return rv;
   }
-  loadPluginModule(module){
+  loadPluginModule(module, callback){
     /* Load a plugin *module*.*/
     var id = 'unknown';
+    var self = this;
+    var done = function(error) {
+      self.logger.verbose("plugin loaded!");
+      if (error != null) {
+        error.message = "Error loading plugin '" + id + "': " + error.message;
+      }
+      return callback(error);
+    };
     try {
       if (typeof module === 'string') {
         id = module;
         module = this.loadModule(module);
       }
-      return module.call(null, this);
+      module.call(null, this, done);
     } catch (error) {
       if (error != null) {
         error.message = "Error loading plugin '" + id + "': " + error.message;
       }
-      throw error;
+      done(error);
     }
+  }
+  loadPluginModulePromise(module){
+    return Promise.promisify(this.loadPluginModule, {context: this})(module);
   }
   loadViewModule(id){
     /* Load a view *module* and add it to the environment. */
@@ -204,18 +215,27 @@ class Environment extends EventEmitter{
   }
   loadPlugins(){
     var self = this;
-    var defaultPlugins = self.config.defaultPlugins || self.constructor.defaultPlugins;
-    defaultPlugins.forEach(function(plugin){
-      self.logger.verbose("loading default plugin: " + plugin);
-      var id = require.resolve("./../plugins/" + plugin);
-      module = require(id);
-      self.loadedModules.push(id);
-      self.loadPluginModule(module, callback);
-    });
-    self.config.plugins.forEach(function(plugin){
-      self.logger.verbose("loading plugin: " + plugin);
-      self.loadPluginModule(plugin);
-    });
+    return Promise.coroutine(function*(){
+      try{
+        var defaultPlugins = self.config.defaultPlugins || self.constructor.defaultPlugins;
+        for (var i = 0; i < defaultPlugins.length; i++) {
+          let plugin = defaultPlugins[i];
+          self.logger.verbose("loading default plugin: " + plugin);
+          var id = require.resolve("./../plugins/" + plugin);
+          module = require(id);
+          self.loadedModules.push(id);
+          yield self.loadPluginModulePromise(module);
+        }
+        for (var i = 0; i < self.config.plugins.length; i++) {
+          let plugin = self.config.plugins[i];
+          self.logger.verbose("loading plugin: " + plugin);
+          yield self.loadPluginModulePromise(plugin);
+        }
+      } catch(err){
+        self.logger.error(err);
+        throw err;
+      }
+    })()
   }
   loadViews(){
     var self = this;
@@ -256,7 +276,7 @@ class Environment extends EventEmitter{
   load(){
     var self = this;
     return Promise.coroutine(function*(){
-      self.loadPlugins();
+      yield self.loadPlugins();
       self.loadViews();
       var contents = yield self.getContents();
       var templates = yield  self.getTemplates();
