@@ -9,6 +9,7 @@ var {TemplatePlugin, loadTemplates} = require("./templates");
 var {logger} = require('./logger');
 var {render} = require('./renderer');
 var {runGenerator} = require('./generator');
+var server = require('./server');
 
 var Promise = require('bluebird');
 
@@ -288,7 +289,7 @@ class Environment extends EventEmitter{
   preview(){
     var self = this;
     this.mode = 'preview';
-    return require('./server').run(this)
+    return this.server.run(this)
     .then(function(server){
       self.restart = server.restart;
       return server;
@@ -328,6 +329,7 @@ Environment.prototype.utils = utils;
 Environment.prototype.ContentTree = ContentTree;
 Environment.prototype.ContentPlugin = ContentPlugin;
 Environment.prototype.TemplatePlugin = TemplatePlugin;
+Environment.prototype.server = server;
 
 module.exports = {
   Environment
