@@ -88,6 +88,9 @@ class Environment extends EventEmitter{
   resolveContentsPath(pathname){
     return path.resolve(this.contentsPath, pathname || '');
   }
+  resolveTemplatesPath(pathname){
+    return path.resolve(this.templatesPath, pathname);
+  }
   resolveModule(module){
     /* Resolve *module* to an absolute path, mimicing the node.js module loading system. */
     var error, nodeDir;
@@ -111,6 +114,9 @@ class Environment extends EventEmitter{
   }
   relativeContentsPath(pathname){
     return path.relative(this.contentsPath, pathname);
+  }
+  relativeTemplatesPath(pathname){
+    return path.relative(this.templatesPath, pathname);
   }
   registerContentPlugin(group, pattern, plugin){
     this.logger.verbose("registering content plugin " + plugin.name + " that handles: " + pattern);
