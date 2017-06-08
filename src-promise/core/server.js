@@ -241,8 +241,7 @@ var setup = function(env) {
         let pluginName = content.constructor.name;
         let error, responseCode, result;
         try{
-          let result = renderView(env, content, locals, tree, templates);
-          result = yield Promise.cast(result);
+          let result = yield renderView(env, content, locals, tree, templates);
           if(result){
             let mimeType = mime.lookup(content.filename, mime.lookup(uri));
             let charset = mime.charsets.lookup(mimeType);
@@ -295,7 +294,7 @@ var setup = function(env) {
       }
     })();
   };
-  requestHandler = function(request, response) {
+  requestHandler = function(request, response, next) {
     var start, uri;
     start = Date.now();
     uri = url.parse(request.url).pathname;
@@ -311,12 +310,18 @@ var setup = function(env) {
       }
       let {error, responseCode, pluginName} 
         = yield contentHandler(request, response);
+
       if ((error != null) || (responseCode == null)) {
-        responseCode = error != null ? 500 : 404;
-        response.writeHead(responseCode, {
-          'Content-Type': 'text/plain'
-        });
-        response.end(error != null ? error.message : '404 Not Found\n');
+        if(next){
+          next();
+          return;
+        } else {
+          responseCode = error != null ? 500 : 404;
+          response.writeHead(responseCode, {
+            'Content-Type': 'text/plain'
+          });
+          response.end(error != null ? error.message : '404 Not Found\n');
+        }
       }
       var delta = Date.now() - start;
       var logstr = (colorCode(responseCode)) + " " + (chalk.bold(uri));

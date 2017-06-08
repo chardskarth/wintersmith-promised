@@ -1,6 +1,5 @@
 var fs = require('fs');
 var util = require('util');
-var async = require('async');
 var path = require('path');
 var mkdirp = require('mkdirp');
 var Promise = require('bluebird');
@@ -11,25 +10,31 @@ var {pump, extend, setImmediate} = require('./utils');
 pump = Promise.promisify(pump);
 
 var renderView = function(env, content, locals, contents, templates) {
-  var _locals = {
-    env: env,
-    contents: contents
-  };
-  Object.assign(_locals, locals);
-  var {view} = content;
-  if(typeof view === "string"){
-    name = view;
-    view = env.views[view];
-    if (view == null) {
-      throw new Error("content '" + content.filename + "' specifies unknown view '" + name + "'");
+  return Promise.coroutine(function*(){
+    var _locals = {
+      env: env,
+      contents: contents
+    };
+    Object.assign(_locals, locals);
+    var {view} = content;
+    if(typeof view === "string"){
+      name = view;
+      view = env.views[view];
+      if (view == null) {
+        throw new Error("content '" + content.filename + "' specifies unknown view '" + name + "'");
+      }
     }
-  }
-  try {
-    return view.call(content, env, _locals, contents, templates);
-  } catch(error){
-    error.message = content.filename + ": " + error.message;
-    throw error;
-  }
+    try {
+      let viewResult = view.call(content, env, _locals, contents, templates);
+      if(typeof viewResult.then !== "function"){
+        viewResult = Promise.cast(viewResult);
+      }
+      return yield viewResult;
+    } catch(error){
+      error.message = content.filename + ": " + error.message;
+      throw error;
+    }
+  })();
 }
 
 var render = function(env, outputDir, contents, templates, locals) {
@@ -38,8 +43,7 @@ var render = function(env, outputDir, contents, templates, locals) {
     env.logger.verbose("render output directory: " + outputDir);
     
     var renderPlugin = Promise.coroutine(function*(content){
-      var result = renderView(env, content, locals, contents, templates);
-      result = yield Promise.cast(result);
+      var result = yield renderView(env, content, locals, contents, templates);
       if(result instanceof Stream || result instanceof Buffer){
         var destination = path.join(outputDir, content.filename);
         env.logger.verbose("writing content " + content.url + " to " + destination);

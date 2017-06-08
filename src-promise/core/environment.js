@@ -312,7 +312,7 @@ class Environment extends EventEmitter{
       if (workDir == null) {
         workDir = path.dirname(config);
       }
-      config = Config.fromFileSync(config);
+      config = Config.fromFile(config);
     } else {
       if (workDir == null) {
         workDir = process.cwd();
