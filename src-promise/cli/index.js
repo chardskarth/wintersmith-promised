@@ -20,6 +20,18 @@
     longStackTraces: true
   });
 
+  process.on('uncaughtException', function(error) {
+    console.log("uncaught exception");
+    logger.error(error.message, error);
+    return process.exit(1);
+  });
+  process.on("unhandledRejection", function(reason, promise) {
+    // See Promise.onPossiblyUnhandledRejection for parameter documentation
+    console.log("unhandled rejection");
+    logger.error(reason.message, reason);
+    return process.exit(1);
+  });
+
   globalOptions = {
     boolean: ['verbose', 'quiet', 'version', 'help'],
     alias: {

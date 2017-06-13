@@ -360,7 +360,7 @@ var run = function(env) {
     configWatcher.on('change', function() {
       var cliopts, config, error, key, value;
       try {
-        config = Config.fromFileSync(env.config.__filename);
+        config = Config.fromFile(env.config.__filename);
       } catch (error1) {
         error = error1;
         env.logger.error("Error reloading config: " + error.message, error);
@@ -420,18 +420,6 @@ var run = function(env) {
       return retVal;
     })()
   };
-  
-  process.on('uncaughtException', function(error) {
-    console.log("uncaught exception");
-    env.logger.error(error.message, error);
-    return process.exit(1);
-  });
-  process.on("unhandledRejection", function(reason, promise) {
-    // See Promise.onPossiblyUnhandledRejection for parameter documentation
-    console.log("unhandled rejection");
-    env.logger.error(reason);
-    return process.exit(1);
-  });
 
   env.logger.verbose('starting preview server');
   return start()
