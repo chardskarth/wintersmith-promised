@@ -1,7 +1,7 @@
 {
   "name": "wintersmith-promised",
   "version": "1.0.0",
-  "main": "./src-promise/",
+  "main": "./src/",
   "author": {
     "name": "Richard Domingo",
     "email": "chardskarth@gmail.com"
@@ -9,8 +9,12 @@
   "bin": {
     "wintersmith": "./bin/wintersmith"
   },
+  "scripts": {
+    "test": "mocha test/test-main.js"
+  },
   "dependencies": {
     "bluebird": "^3.5.0",
+    "chai": "^4.1.0",
     "chalk": "~1.1.3",
     "chokidar": "~1.6.1",
     "highlight.js": "~9.8.0",
