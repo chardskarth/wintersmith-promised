@@ -92,6 +92,8 @@ var setup = function(env) {
     viewsLoad: false,
     localsLoad: false
   };
+
+  let tryRemoveCacheRequestHandler; //if config setting: 
   isReady = function() {
 
     /* Returns true if we have no running tasks */
@@ -302,8 +304,8 @@ var setup = function(env) {
       if (!block.contentsLoad && (contents == null)) {
         yield loadContents();
       }
-      if (!block.templatesLoad && (templates == null)) {
-        yield loadTemplates();
+      if (!block.templatesLoad && (templates == null)) {    
+        yield loadTemplates(); 
       }
       while(!isReady){
         yield Promise.delay(50);
@@ -333,6 +335,22 @@ var setup = function(env) {
       if (error) {
         return env.logger.error(error.message, error);
       }
+
+      //remove cache so it reloads after a little idle
+      if(env.config.removeCacheAfterLoad){
+        clearTimeout(tryRemoveCacheRequestHandler);
+        tryRemoveCacheRequestHandler = setTimeout(function(){
+          if(env.config.alwaysReloadContents){
+            contents = null;
+          }
+          if(env.config.alwaysReloadTemplates){
+            templates = null;
+          }
+          env.logger.verbose("deleted cache after ", env.config.removeCacheAfterLoad)
+        }, env.config.removeCacheAfterLoad)
+      }
+      
+      
     })();
   };
   return Promise.coroutine(function*(){
