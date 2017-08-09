@@ -1,0 +1,7 @@
+{
+  "opts": {
+    "beTrue": false
+    , "beFalse": true
+  }
+  , "configOverrides":[     "config-live.json"   ]
+}

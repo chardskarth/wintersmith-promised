@@ -1,0 +1,74 @@
+let Promise = require('bluebird');
+let _ = require('lodash');
+let minimatch = require('minimatch');
+let chalk = require('chalk');
+
+
+module.exports = function(logger, util, templatesPath){
+  let {readDirectoryAndResolve} = util;
+  let templates = {};
+  let templatePlugins = [];
+  var minimatchOptions = {
+    dot: false
+  };
+
+  let mainRetVal = {}
+  function registerFunctionToMainRetVal(obj){
+    _.forOwn(obj, function(value, key){
+      mainRetVal[key] = value.bind(mainRetVal)
+    });
+  }
+
+  let loadTemplate = function(filepath){
+    return Promise.coroutine(function* (){
+      try{
+        let plugin = templatePlugins.find(function({pattern}){
+          return minimatch(filepath.relative, pattern, minimatchOptions)
+        })
+        if(!plugin) {
+          logger.info(`skipping template: ${chalk.bold(filepath.relative)}`)
+        } else {
+          var template = plugin["class"].fromFile(filepath);
+          template = yield Promise.cast(template);
+          templates[filepath.relative] = template
+          return template;
+        }
+      } catch(error){
+        error.message = "template " + filepath.relative + ": " + error.message;
+        throw error;
+      }
+    })();
+  }
+
+  let loadTemplates = function(){
+    return Promise.coroutine(function* (){
+      let filenames = readDirectoryAndResolve(templatesPath, true);
+      return Promise.all(filenames.map(loadTemplate))
+    })();
+  }
+
+  let getTemplates = function(){
+    return Promise.coroutine(function* (){
+      if(_.isEmpty(templates)){
+        yield loadTemplates();
+      }
+      return templates; 
+    })();
+  }
+
+  let registerTemplatePlugin = function(pattern, plugin){
+    logger.verbose("registering template plugin " + plugin.name + " that handles: " + pattern);
+    return templatePlugins.push({
+      pattern: pattern,
+      "class": plugin
+    });
+  }
+
+  registerFunctionToMainRetVal({
+    loadTemplates
+    , getTemplates
+    , registerTemplatePlugin
+  });
+
+  return mainRetVal;
+}

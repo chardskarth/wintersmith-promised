@@ -1,4 +1,5 @@
 #!/usr/bin/env node
 
 // require('../lib/cli/').main(process.argv);
-require('../src-promise/cli/').main(process.argv);
+// require('../src-promise/cli/').main(process.argv);
+require('../src/cli/').main(process.argv);

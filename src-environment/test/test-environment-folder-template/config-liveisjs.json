@@ -1,0 +1,8 @@
+{
+  "opts": {
+    "beTrue": false
+    , "beFalse": true
+  }
+  , "initPath": "./index-env.js"
+  , "configOverrides":[     "config-live.js"   ]
+}

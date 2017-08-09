@@ -1,0 +1,31 @@
+{
+  "name": "ms-environment",
+  "version": "1.0.0",
+  "description": "``` | -- /config |    | -- /database  |    |     ` -- default.json |    | -- /server |    |    ` -- default.json | -- /build  | -- /src |    | -- /classes |    | -- /interfaces |    | -- /routes |    | -- /mngsft-utils |    | -- /transactions |    ` -- app.ts | -- .gitignore | -- README.md",
+  "main": "config.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "mocha test/test-main.js",
+    "test-env": "mocha test/environment_spec.js",
+    "test-cwdutil": "mocha test/cwdutil_spec.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "ssh://git@gitlab.mangosoft.com:2289/mangosoftappsdev/ms-environment.git"
+  },
+  "dependencies": {
+    "bluebird": "^3.5.0",
+    "chai": "^4.0.2",
+    "lodash": "^4.17.4",
+    "winston": "^2.3.1"
+  },
+  "devDependencies": {
+    "copy-dir": "^0.3.0",
+    "mv": "^2.1.1",
+    "node-delete": "^0.1.2"
+  },
+  "author": "",
+  "license": "ISC"
+}
