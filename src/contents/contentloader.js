@@ -76,51 +76,7 @@ module.exports = function(logger, util, mixin, directoryable, contentsPath
 
   function contentTreeFromDirectory(directory){
     return mainRetVal.fromDirectory(directory);
-    // return Promise.coroutine(function* (){
-    //   let relativeDirectory = relativeContentsPath(directory);
-    //   let tree = new ContentTree(relativeDirectory);
-    //   logger.silly("creating content tree from " + directory);
-    //   let resolvedFilenames = readDirectoryAndResolve(directory, contentsPath);
-    //   resolvedFilenames = filterIgnored(resolvedFilenames);
-    //   for(let resolvedFilename of resolvedFilenames){
-    //     yield createInstance(resolvedFilename, tree);
-    //   }
-    //   return tree;
-    // })();
   }
-
-  // function filterIgnored(filenames) {
-  //   let arrIgnore = env.config.ignore || [];
-  //   let retVal = filenames;
-  //   if (arrIgnore.length > 0) {
-  //     retVal = filenames.filter(function(filename, i, filenames){
-  //       let include = !arrIgnore.some((patternIgnore) => {
-  //         return minimatch(filename.relative, patternIgnore, minimatchOptions);
-  //       });
-  //       return include;
-  //     });
-  //   }
-  //   return retVal;
-  // }
-
-  // function createInstance(filepath, tree) {
-  //   return Promise.coroutine(function*(){
-  //     /* Create plugin or subtree instance for *filepath*. */
-  //     var stats = fs.statSync(filepath.full);
-  //     var basename = path.basename(filepath.relative);
-  //     if(stats.isDirectory()) {
-  //       let result = yield contentTreeFromDirectory(filepath.full);
-  //       result.parent = tree;
-  //       tree.addDirectory(basename, result);
-  //     } else if(stats.isFile()){
-  //       let instance = yield loadContentPlugin(filepath);
-  //       instance.parent = tree;
-  //       tree.addFile(basename, instance);
-  //     } else {
-  //       throw new Error("Invalid file " + filepath.full + ".");
-  //     }
-  //   })();
-  // }
 
   function runGenerator(contents, generator){
     var resolve = function(root, items){
@@ -133,7 +89,7 @@ module.exports = function(logger, util, mixin, directoryable, contentsPath
           root.addFile(key, item);
           root[key] = item;
           //this is goonna failll kasi tinanggal ko yung groupNames
-          results.push(root._[generator.group].push(item));
+          // results.push(root._[generator.group].push(item));
         } else if (item instanceof Object) {
           tree = new ContentTree(key);
           tree.setParent(root);

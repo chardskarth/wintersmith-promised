@@ -130,10 +130,10 @@ function main(argv) {
     extendOptions(cmdOptions, cmd.options);
     opts = parseArgv(argv, cmdOptions);
     let env = loadEnv(opts);
-    let {logger, cwdutil} = env;
+    let {logger} = env;
     
     let customTransports 
-        = cwdutil.requireCWD("./src/winston-logger-transport")(logger, loggerOpts);
+        = require("./../winston-logger-transport")(logger, loggerOpts);
     return cmd(opts, env);
   }
 };

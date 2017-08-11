@@ -1,34 +1,28 @@
-let Promise = require('bluebird');
 let assert = require('assert');
+let injectorAutoInvoker = require('./injector-autoinvoker');
+let EventEmitter = require('events');
+let {isFunction: _isFunction, isObject: _isObject} = require('./injector-util');
 
-function _isFunction(toCheck){
-  return toString.call(toCheck) === "[object Function]";
-}
-
-function _isObject(obj) {
-  var typeOf = typeof obj;
-  return obj && typeOf === "object" && !Array.isArray(obj);
-}
-
-class Injector{
+class Injector extends EventEmitter{
   constructor(dependencies, options){
+    super();
     this._dependencies = dependencies || {} ;
     this._options = options;
   }
-  
-  setDependency(key, value){
-    assert.equal(typeof key, "string", 'key must be a string');
-    this._dependencies[key] = value;
+
+  _assertNonExisting(keys){
+    let existingKeys = keys.filter(k => typeof this._dependencies[k] !== 'undefined');
+    if(existingKeys.length){
+      throw new Error(`${existingKeys.join(', ')} already existing`);
+    }
   }
 
   setDependencies(keyValue){
     assert(_isObject(keyValue), 'keyValue must be an object');
     let keys = Object.keys(keyValue);
-    let existingKeys = keys.filter(k => typeof this._dependencies[k] !== 'undefined');
-    if(existingKeys.length){
-      throw new Error(`${existingKeys.join(', ')} already existing`);
-    }
+    this._assertNonExisting(keys);
     Object.assign(this._dependencies, keyValue);
+    this.emit('dependencyAdded');
   }
 
   getDependencies(){
@@ -48,11 +42,19 @@ class Injector{
     return retVal.length == 1 ? retVal[0] : retVal;
   }
 
-  _getParamsArr(funcToInvoke) {
-    let retValParamsArr = []
+  _getParamsName(fnToInvoke){
     let paramRegExp = /\((.|\s)*?\)/;
-    let funcString = typeof funcToInvoke === "function" ? funcToInvoke.toString() : funcToInvoke;
-    let paramsStrArr = funcString.match(paramRegExp)[0].replace(/[()]/gi,'').split(",");
+    let funcString = typeof fnToInvoke === "function" ? fnToInvoke.toString() : fnToInvoke;
+    return funcString
+      .match(paramRegExp)[0]
+      .replace(/[()]/gi,'')
+      .split(",")
+      .map(x => x.trim());
+  }
+
+  _getParamsArr(fnToInvoke) {
+    let retValParamsArr = []
+    let paramsStrArr = this._getParamsName(fnToInvoke);
     for(let i = 0; i < paramsStrArr.length; i++){
       let dependencyName = paramsStrArr[i].trim();
       if(!dependencyName){
@@ -68,11 +70,11 @@ class Injector{
     return retValParamsArr;
   }
 
-  invoke(functionToInvoke){
-    assert(_isFunction(functionToInvoke), "invoke param should be a function");
-    let params = this._getParamsArr(functionToInvoke);
-    return functionToInvoke.apply(null, params);
+  invoke(fnToInvoke){
+    assert(_isFunction(fnToInvoke), "invoke param should be a function");
+    let params = this._getParamsArr(fnToInvoke);
+    return fnToInvoke.apply(null, params);
   }
 }
-
+injectorAutoInvoker(Injector);
 module.exports = Injector;

@@ -7,16 +7,28 @@ Promise.config({
   longStackTrace: true
 });
 
-function initInjector(util, target = {}){
-  let Injector = util.requireCWD("./src/injector");
+function getInvoker(cwdutil, target = {}){
+  let Injector = cwdutil.requireCWD("./src/injector");
   let injectorInstance = new Injector(target);
-  return injectorInstance;
+  let retVal = function(toRequire, dependencyName){
+    if(typeof toRequire === 'string'){
+      toRequire = cwdutil.requireCWD(toRequire);
+    }
+    return injectorInstance.autoInvoke(toRequire, dependencyName);
+  };
+  ['setDependencies', 'getDependencies', 'assertInvokeResolved'].forEach(x => {
+    retVal[x] = injectorInstance[x].bind(injectorInstance);
+  });
+  return retVal;
 }
 
 //Normalize configs. cliOpts takes precedence over config.json over default configs
-function getConfig(util, workDir, configDefaults, configPath, cliOpts){
+function getConfig(invoke, workDir, configDefaults, configPath, cliOpts){
+  let util = invoke.getDependencies('util');
   let configJson = util.tryLoadFile(configPath, 'config found: ', "no config found");
-  return Object.assign({workDir}, configDefaults, configJson, cliOpts);
+  let config = Object.assign({workDir}, configDefaults, configJson, cliOpts);
+  let {contentsPath, templatesPath} = ensurePathsExist(util, workDir, config);
+  invoke.setDependencies({config, workDir, contentsPath, templatesPath});
 }
 
 function ensurePathsExist(util, workDir, config){
@@ -26,7 +38,7 @@ function ensurePathsExist(util, workDir, config){
   return {contentsPath, templatesPath};
 }
 
-function createPluginsEnv(util, injector){
+function createEnvInterface(util, injector){
   let [ContentPlugin, TemplatePlugin, ContentTree, contentsPath, templatesPath
           , logger, config, contentLoader, templateLoader] 
       = injector.getDependencies('ContentPlugin', 'TemplatePlugin', 'ContentTree'
@@ -52,52 +64,49 @@ function createPluginsEnv(util, injector){
   };
 }
 
+function createCliInterface(invoke){
+  let {preview, build} = invoke.getDependencies('siteoutput');
+  let logger = invoke.getDependencies('logger');
+  return {preview, build, logger};
+}
+
+//load client plugins and default wintersmith plugins
+// client plugins are given 'env interface'
+// default plugins are given access to every object, that's why we pass an injector
+function loadPlugins(util, cwdutil, config, invoke){
+  let pluginsEnvInterface = createEnvInterface(util, invoke);
+  util.loadPlugins(pluginsEnvInterface); 
+  util.loadWintersmithPlugins(invoke); 
+}
+
 let thisWintersmithDirectory = path.resolve(__dirname, "./../");
 module.exports = function(workDir, configDefaults, configPath, cliOpts){
   let env = Environment.createInstance(thisWintersmithDirectory);
   let {cwdutil, logger} = env;
   let {requireCWD} = cwdutil;
-  let injector = initInjector(cwdutil, {env, logger});
-  let util = injector.invoke(requireCWD('./src/util'));
+  let invoke = getInvoker(cwdutil, {env, cwdutil, logger});
+  invoke.setDependencies({invoke});
+  
+  invoke('./src/util', 'util');
+  invoke("./src/util-contenthelpers");
 
-  let config = getConfig(util, workDir, configDefaults, configPath, cliOpts);
-  let {contentsPath, templatesPath} = ensurePathsExist(util, workDir, config);
-  injector.setDependencies({util, config, workDir, contentsPath, templatesPath});
+  getConfig(invoke, workDir, configDefaults, configPath, cliOpts);
 
-  let ContentPlugin = injector.invoke(requireCWD("./src/contents/contentplugin"));
-  let TemplatePlugin = injector.invoke(requireCWD("./src/templates/templateplugin"));
-  injector.setDependencies({ContentPlugin, TemplatePlugin});
-
-  let ContentTree = injector.invoke(requireCWD("./src/contents/contenttree"));
-  injector.setDependencies({ContentTree});
-
-  let StaticFile = injector.invoke(requireCWD("./src/contents/staticfileplugin"));
-  injector.setDependencies({StaticFile});
-
-  injector.invoke(requireCWD("./src/util-contenthelpers"));
+  invoke("./src/contents/contentplugin", "ContentPlugin");
+  invoke("./src/templates/templateplugin", "TemplatePlugin");
+  invoke("./src/contents/contenttree", "ContentTree");
+  invoke("./src/contents/staticfileplugin", "StaticFile");
 
   let mixin = requireCWD("./src/mixins/mixin");
   let directoryable = requireCWD("./src/mixins/directoryable");
-  injector.setDependencies({mixin, directoryable});
+  invoke.setDependencies({mixin, directoryable});
 
-  let contentLoader = injector.invoke(requireCWD("./src/contents/contentloader"));
-  let templateLoader = injector.invoke(requireCWD("./src/templates/templateloader"));
-  injector.setDependencies({contentLoader, templateLoader});
-  
-  let {loadPlugins, loadPredefinedPlugins} = util;
-  
-  //create an "env" interface for loadPlugins. We do not want to expose every object we have
-  let pluginsEnvInterface = createPluginsEnv(util, injector);
-  loadPlugins(pluginsEnvInterface);
-  // loadPredefinedPlugins(pluginsEnvInterface);
+  invoke("./src/contents/contentloader", "contentLoader");
+  invoke("./src/templates/templateloader", "templateLoader");
+  invoke("./src/resulthelper", "ResultHelperFactory");
+  invoke("./src/siteoutput", "siteoutput");
 
-  let ResultHelperFactory = requireCWD("./src/resulthelper.js")(env);
-  injector.setDependencies({ResultHelperFactory});
-  let {preview, build} = injector.invoke(requireCWD("./src/siteoutput"));
-
-  //create an "env" interface for cli
-  let cliEnvInterface = {
-    preview, build, logger, cwdutil
-  }
-  return cliEnvInterface;
+  invoke(loadPlugins);//(util, cwdutil, config, injector);
+  invoke.assertInvokeResolved();
+  return createCliInterface(invoke);
 }

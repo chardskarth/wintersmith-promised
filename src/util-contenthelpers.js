@@ -6,8 +6,8 @@ let minimatchOptions = {
   dot: false
 };
 
-module.exports = function(util, ContentTree, ContentPlugin, contentsPath, templatesPath
-    , workDir, config){
+module.exports = function(util, cwdutil, ContentTree, ContentPlugin, contentsPath
+    , templatesPath, workDir, config){
 
   function registerToUtil(obj){
     _.forOwn(obj, function(value, key){
@@ -26,7 +26,7 @@ module.exports = function(util, ContentTree, ContentPlugin, contentsPath, templa
       return this.pathResolve(workDir, toResolve);
     }
   }
-
+  
   let contentHelpers = {
     contentTreeFlatten(tree){
       let retVal = [];
@@ -155,14 +155,25 @@ module.exports = function(util, ContentTree, ContentPlugin, contentsPath, templa
       }
       return defer.promise;
     }
-    , loadPlugins(){
-      let args = [].slice.call(arguments);
+    , loadPlugins(...args){
       let self = this;
       return Promise.coroutine(function* (){
         let plugins = config.plugins;
         for(let i = 0; i < plugins.length; i++){
           let plugin = plugins[i];
           yield self.loadPluginModule(plugin, args);
+        }
+      })();
+    }
+    , loadWintersmithPlugins(invoke){
+      let self = this;
+      return Promise.coroutine(function* (){
+        let resolvedCWDPlugins = config.wintersmithPlugins
+          .map(x => util.pathJoin(config.wintersmithPluginsPath, x))
+          .map(x => cwdutil.resolveCWD(x));
+        for(let i = 0; i < resolvedCWDPlugins.length; i++){
+          let plugin = require(resolvedCWDPlugins[i]);
+          invoke(plugin);
         }
       })();
     }

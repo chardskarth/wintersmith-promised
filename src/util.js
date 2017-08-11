@@ -1,4 +1,4 @@
-let {relative, resolve, join, basename} = require('path');
+let {relative, resolve, join, basename, parse} = require('path');
 let {readFileSync, existsSync, readdirSync, statSync} = require('fs');
 let _ = require("lodash");
 let Promise = require('bluebird');
@@ -165,7 +165,7 @@ module.exports = function(logger){
       })();
     }
     , getDirectoryName({full}){
-      return basename(full);
+      return this.pathBasename(full);
     }
     , fileExistsSync: existsSync
   }
@@ -173,29 +173,13 @@ module.exports = function(logger){
   let pathHelpers = {
     pathResolve: resolve
     , pathRelative: relative
+    , pathJoin: join
+    , pathParse: parse
+    , pathBasename: basename
   }
 
   registerFunctionsToMainHelpers(retVal);
   registerFunctionsToMainHelpers(fileHelpers);
   registerFunctionsToMainHelpers(pathHelpers);
-
-  // ['ContentTree', 'ContentPlugin', 'contentsPath', 'templatesPath'
-  //     , 'workDir', 'config']
-  //   .forEach((getter) => {
-  //     mainHelpers.defineProperty(mainHelpers, getter, {
-  //       get(){
-  //         return env.get(getter);
-  //       }
-  //     })
-  //   });
-
-  // ['logger']
-  //   .forEach((getter) => {
-  //     mainHelpers.defineProperty(mainHelpers, getter, {
-  //       get(){
-  //         return env[getter];
-  //       }
-  //     })
-  //   });
   return mainHelpers;
 }

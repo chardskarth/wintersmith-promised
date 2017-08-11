@@ -1,7 +1,7 @@
 var path = require('path');
 var stream = require('stream');
 var _ = require('lodash');
-var configDefaults = require("./../config-defaults");
+var configDefaults = require("./../default-config");
 // var {Config} = require('./../core/config');
 // var {Environment} = require('./../core/environment');
 // var {logger} = require('./../core/logger');
