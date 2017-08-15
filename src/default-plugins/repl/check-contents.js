@@ -27,6 +27,14 @@ function rebuildLookupMap(arrEdited, contents, loadContentPlugin){
   })();
 }
 
+function insertNewFiles(added, contents, loadContentPlugin){
+  return Promise.coroutine(function* (){
+    if(added.length){
+      logger.info("new files detected. not yet supported, you'll have to restart for now... sad.");
+    }
+  })();
+}
+
 function diff(prev, curr){
   let edited = [];
   let added = [];
@@ -84,6 +92,7 @@ module.exports = function(replContext, contentsPath, logger, contentsLookupMap
       mapChildrenToObject(currentTree);
       let {edited, added} = diff(previousTree, currentTree);
       yield rebuildLookupMap(edited, contents, loadContentPlugin);
+      yield insertNewFiles(added, contents, loadContentPlugin);
     })();
   }
 }
