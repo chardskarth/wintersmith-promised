@@ -1,11 +1,11 @@
 let chai = require("chai");
 let expect = chai.expect;
-let {shouldThrow, createTemplateRebuilder, createDeleteSync} = require('./util');
+let {shouldThrow, shouldReject, createTemplateRebuilder, createDeleteSync} = require('./util');
 let assert = require('assert');
 let path = require('path')
 let {join} = path;
 
-let Injector = require("./../src/injector");
+let Injector = require(join(__dirname, "./../src/modules/injector/injector"));
 let Promise = require('bluebird');
 
 describe("Injector", function(){
@@ -15,7 +15,7 @@ describe("Injector", function(){
   it("Should have the expected own properties", function(){
     expect(Object.getOwnPropertyNames(Injector.prototype)).to.have.all.members([
       'constructor', '_getParamsArr', '_getParamsName', 'invoke', "setDependencies"
-      , "getDependencies", 'autoInvoke', 'assertInvokeResolved'
+      , "getDependencies", 'autoInvoke', 'assertInvokeResolved', '_createError'
       , '_assertNonExisting'
     ]);
   });
@@ -208,6 +208,24 @@ describe("Injector", function(){
       expect(objectB).to.equal('b');
       expect(objectC).to.equal('c');
     });
+    it("nesting autoInvoke treats error separately", function(){
+      this.timeout(100);
+      return Promise.coroutine(function* (){
+        let injector1 = new Injector();
+        expect(injector1.instanceId).to.exist;
+        let injector2, injector3;
+        function ClassA(){
+          injector2 = new Injector();
+          function ClassB(objectA){}
+          injector2.invoke(ClassB);
+        }
+        yield shouldReject(function(){
+          return injector1.autoInvoke(ClassA);
+        }, function(err){
+          expect(err.injectorInstanceId).to.equal(injector2.instanceId);
+        });
+      })();
+    });
     describe("assertInvokeResolved", function(){
       it("throws on pending invokes", function(){
         let injector = new Injector();
@@ -222,8 +240,8 @@ describe("Injector", function(){
         shouldThrow(function(){
           injector.assertInvokeResolved();
         }, function(err){
-          expect(err.message).to.include("objectA not yet resolved. missing dependencies: objectB, objectC");
-          expect(err.message).to.include("objectD not yet resolved. missing dependencies: objectA");
+          expect(err.message).to.include("ClassA not yet resolved. missing dependencies: objectB, objectC");
+          expect(err.message).to.include("ClassD not yet resolved. missing dependencies: objectA");
         });
       });
     });

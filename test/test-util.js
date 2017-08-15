@@ -14,7 +14,7 @@ const DEST_WITHCONFIG = join(__dirname, "./dest-withconfig");
 const TEMPLATE_NOCONFIG = join(__dirname, "./template-withoutconfig");
 const DEST_NOCONFIG = join(__dirname, "./dest-withoutconfig");
 
-let Injector = require(join(__dirname, "./../src/injector"));
+let Injector = require(join(__dirname, "./../src/modules/injector/injector"));
 let fakeLogger = {
   info: function(){}
   , verbose: function(){}

@@ -3,8 +3,7 @@ let fs = require('fs');
 module.exports = function(ContentPlugin){
   class StaticFile extends ContentPlugin{
     constructor(filepath){
-      super();
-      this.filepath = filepath;
+      super(filepath);
     }
     getView(){
       return function(...args) {

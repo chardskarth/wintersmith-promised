@@ -8,13 +8,17 @@ Promise.config({
 });
 
 function getInvoker(cwdutil, target = {}){
-  let Injector = cwdutil.requireCWD("./src/injector");
+  let Injector = cwdutil.requireCWD("./src/modules/injector/injector");
   let injectorInstance = new Injector(target);
   let retVal = function(toRequire, dependencyName){
     if(typeof toRequire === 'string'){
       toRequire = cwdutil.requireCWD(toRequire);
     }
-    return injectorInstance.autoInvoke(toRequire, dependencyName);
+    return injectorInstance.autoInvoke(toRequire, dependencyName)
+      .catch(err => {
+        console.log(err);
+        process.exit(1);
+      });
   };
   ['setDependencies', 'getDependencies', 'assertInvokeResolved'].forEach(x => {
     retVal[x] = injectorInstance[x].bind(injectorInstance);

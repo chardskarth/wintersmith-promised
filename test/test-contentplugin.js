@@ -6,7 +6,7 @@ let {join} = path;
 let assert = require('assert');
 let Promise = require('bluebird');
 
-let Injector = require(join(__dirname, "./../src/injector"));
+let Injector = require(join(__dirname, "./../src/modules/injector/injector"));
 let util = require("./../src/util");
 let ContentPluginFunc = require("./../src/contents/contentplugin");
 
@@ -37,14 +37,34 @@ describe("ContentPlugin", function(){
   });
   it('have expected properties', function(){
     let ContentPlugin = createContentPlugin();
-    let properties = Object.getOwnPropertyNames(ContentPlugin.prototype);
-    expect(properties).to.deep.equal([ 'constructor', 'getView', 'getFilename',
-        'getUrl', 'setBase', 'view', 'filename', 'url' ]);
+    expect(Object.getOwnPropertyNames(ContentPlugin.prototype)).to.have.all.members([
+      'constructor', 'getView', 'getFilename', 'getUrl', "setBase"
+      , "view", 'filename', 'url'
+    ]);
+  });
+  it("asserts proper filepath object", function(){
+    let ContentPlugin = createContentPlugin();
+    shouldThrow(function(){
+      new ContentPlugin();
+    }, function(err){
+      expect(err.message).to.equal('filepath should be {relative<String>, full<String>');
+    });
+    shouldThrow(function(){
+      new ContentPlugin({relative:"asf"});
+    }, function(err){
+      expect(err.message).to.equal('filepath must have full<String>');
+    });
+    shouldThrow(function(){
+      new ContentPlugin({full:"asf"});
+    }, function(err){
+      expect(err.message).to.equal('filepath must have relative<String>');
+    });
+    new ContentPlugin({relative: "a", full: "b"});
   });
   it('have expected instance properties', function(){
     let {defineProperty} = util;
     let ContentPlugin = createContentPlugin();
-    let instance = new ContentPlugin();
+    let instance = new ContentPlugin({relative: "a", full: "b"});
     [ 'parent', 'setParent' ]
       .forEach(x => expect(instance).to.have.own.property(x))
   });

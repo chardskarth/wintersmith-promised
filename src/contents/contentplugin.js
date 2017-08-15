@@ -4,8 +4,9 @@ module.exports = function(util, config){
   let {defineProperty, readOnlyProperty, replaceSeparatorIfWin32} = util;
   
   class ContentPlugin{
-    constructor(){
-      ContentPlugin.defineProperties(this);
+    constructor(filepath){
+      util.assertFilepath(filepath);
+      ContentPlugin.defineProperties(this, filepath);
     }
     getView() {
       throw new Error('Not implemented.');
@@ -26,7 +27,8 @@ module.exports = function(util, config){
       this.__plugin = plugin;
       this.__filename = filename;
     }
-    static defineProperties(self){
+    static defineProperties(self, filepath){
+      defineProperty(self, 'filepath', {writable: false, value: filepath});
       defineProperty(self, 'parent', {writable: true});
       defineProperty(self, 'setParent', {writable: false, value(value){
           this.parent = value;

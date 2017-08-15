@@ -162,6 +162,7 @@ module.exports = function(logger, util, mixin, directoryable, contentsPath
     , registerContentPlugin
     , registerGenerator
     , contentTreeFromDirectory
+    , loadContentPlugin
   });
   
   return mainRetVal;

@@ -1,3 +1,5 @@
+'use strict';
+
 let assert = require('assert');
 let Promise = require('bluebird');
 let {isFunction: _isFunction, isObject: _isObject} = require('./injector-util');
@@ -15,13 +17,15 @@ function pushArrInvokePromise(fnToInvoke, dependencyName){
         this.setDependencies({[dependencyName]: result});
       }
     } catch(err){
-      if(err.message.indexOf("unknown parameter: ") == -1){
+      if(!err.message.includes("unknown parameter: ")
+          || err.injectorInstanceId != this.instanceId){
         defer.reject(err);
       }
     }
   }.bind(this, defer, fnToInvoke, dependencyName);
-  bindedInvokeFn();
-  getArrInvokePromise.call(this).push({defer, bindedInvokeFn, fnToInvoke, dependencyName});
+  let retVal = {defer, bindedInvokeFn, fnToInvoke, dependencyName};
+  getArrInvokePromise.call(this).push(retVal);
+  return retVal;
 }
 
 function getArrInvokePromise(){
@@ -55,7 +59,7 @@ function assertNonExistingInArr(key){
   let keys = arrInvoke.map(({dependencyName}) => dependencyName);
   let isExisting = keys.indexOf(key) != -1;
   if(isExisting){
-    throw new Error(`${key} already existing in autoInvoke`);
+    throw this._createError(`${key} already existing in autoInvoke`);
   }
 }
 
@@ -66,7 +70,7 @@ function assertLinearDependency(fnToInvoke, dependencyName){
   let arrInvoke = getArrInvokePromise.call(this);
   fnToInvokeParamsArr.forEach((fnToInvokeParam) => {
     if(fnToInvokeParam === dependencyName){
-      throw new Error(`self dependency detected: ${dependencyName}`);
+      throw this._createError(`self dependency detected: ${dependencyName}`);
     }
     let fnDependent = arrInvoke
       .find(({dependencyName: fnDependentName}) => fnToInvokeParam === fnDependentName);
@@ -76,7 +80,8 @@ function assertLinearDependency(fnToInvoke, dependencyName){
     let {fnToInvoke} = fnDependent;
     let paramsFnDependent = this._getParamsName(fnToInvoke);
     let isNotExisting = !paramsFnDependent.includes(dependencyName);
-    assert(isNotExisting, `circular dependency detected. ${dependencyName} > ${fnToInvokeParam} > ${dependencyName}`);
+    assert(isNotExisting
+      , `circular dependency detected. ${dependencyName} > ${fnToInvokeParam} > ${dependencyName}`);
   });
 }
 
@@ -90,8 +95,11 @@ module.exports = function(InjectorClass){
       assertNonExistingInArr.call(this, dependencyName);
       assertLinearDependency.call(this, fnToInvoke, dependencyName);
     }
-    pushArrInvokePromise.call(this, fnToInvoke, dependencyName);
+    let {bindedInvokeFn, defer} = pushArrInvokePromise.call(this, fnToInvoke, dependencyName);
     initArrInvoker.call(this);
+    //initially try to invoke function
+    bindedInvokeFn();
+    return defer.promise;
   }
 
   InjectorClass.prototype.assertInvokeResolved = function(){
@@ -101,7 +109,7 @@ module.exports = function(InjectorClass){
       });
     let errorMessage = "";
     unresolvedCount.forEach(({fnToInvoke, dependencyName}) => {
-      errorMessage += `${dependencyName} not yet resolved. missing dependencies: `;
+      errorMessage += `${fnToInvoke.name} not yet resolved. missing dependencies: `;
       let paramsArr = this._getParamsName(fnToInvoke);
       let missingDependencies = paramsArr.filter(x => {
         return !this._dependencies[x]
@@ -109,7 +117,7 @@ module.exports = function(InjectorClass){
       errorMessage += `${missingDependencies.join(", ").trim()}; `;
     });
     if(errorMessage){
-      throw new Error(errorMessage);
+      throw this._createError(errorMessage);
     }
   }
 

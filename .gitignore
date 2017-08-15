@@ -2,3 +2,4 @@ lib
 examples
 node_modules
 src-environment
+src/modules/mixin

@@ -2,18 +2,26 @@ let assert = require('assert');
 let injectorAutoInvoker = require('./injector-autoinvoker');
 let EventEmitter = require('events');
 let {isFunction: _isFunction, isObject: _isObject} = require('./injector-util');
+let hat = require('hat');
+let rack = hat.rack(24, 16, 8);
 
 class Injector extends EventEmitter{
   constructor(dependencies, options){
     super();
     this._dependencies = dependencies || {} ;
     this._options = options;
+    this.instanceId = rack();
+  }
+  _createError(message){
+    let newError = new Error(message);
+    newError.injectorInstanceId = this.instanceId;
+    return newError;
   }
 
   _assertNonExisting(keys){
     let existingKeys = keys.filter(k => typeof this._dependencies[k] !== 'undefined');
     if(existingKeys.length){
-      throw new Error(`${existingKeys.join(', ')} already existing`);
+      throw this._createError(`${existingKeys.join(', ')} already existing`);
     }
   }
 
@@ -29,7 +37,7 @@ class Injector extends EventEmitter{
     let keys = [].slice.call(arguments);
     let isEveryArgsString = keys.every(x => typeof x === "string");
     if(!isEveryArgsString){
-      throw new Error("get expects strings only");
+      throw this._createError("get expects strings only");
     }
     let retVal = keys.map(k => this._dependencies[k]);
     let notExistingKeys = retVal
@@ -37,7 +45,7 @@ class Injector extends EventEmitter{
       .map((x, i) => keys[i]);
 
     if(notExistingKeys.length){
-      throw new Error(`${notExistingKeys.join(', ')} not yet set`);
+      throw this._createError(`${notExistingKeys.join(', ')} not yet set`);
     }
     return retVal.length == 1 ? retVal[0] : retVal;
   }
@@ -62,7 +70,7 @@ class Injector extends EventEmitter{
       }
       let toInject = this._dependencies[dependencyName];
       if(typeof toInject === "undefined"){
-        throw new Error(`unknown parameter: ${dependencyName}`);
+        throw this._createError(`unknown parameter: ${dependencyName}`);
       } else {
         retValParamsArr.push(toInject);
       }
