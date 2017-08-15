@@ -27,10 +27,17 @@ function rebuildLookupMap(arrEdited, contents, loadContentPlugin){
   })();
 }
 
-function insertNewFiles(added, contents, loadContentPlugin){
+function insertNewFiles(added, contents, loadContentPlugin, logger){
   return Promise.coroutine(function* (){
     if(added.length){
       logger.info("new files detected. not yet supported, you'll have to restart for now... sad.");
+    }
+  })();
+}
+function deleteInexistentFiles(deleted, contents, loadContentPlugin, logger){
+  return Promise.coroutine(function* (){
+    if(deleted.length){
+      logger.info("old files deleted. not yet supported, you'll have to restart for now... sad.");
     }
   })();
 }
@@ -38,20 +45,42 @@ function insertNewFiles(added, contents, loadContentPlugin){
 function diff(prev, curr){
   let edited = [];
   let added = [];
+  let deleted = [];
+  function filterPath(path){
+    return path.filter(x => x !== 'children' && x !== 'md5');
+  }
+  function isLastPathMD5(arrPath){
+    return arrPath.slice(-1).pop() === "md5";
+  }
+  function removeLast(arrPath){
+    return arrPath.slice(0, arrPath.length - 1);
+  }
+  function getStat(object, objectPath){
+    let retVal = objectPath.length ? _.get(object, objectPath) : object;
+    retVal.path = filterPath(objectPath);
+    return retVal;
+  }
   deepDiff(prev, curr, function(d){
-    let objectPath = d.path.slice(0, d.path.length - 1);
-    let stat = objectPath.length ? _.get(curr, objectPath) : curr;
-    stat.path = d.path.filter(x => x !== 'children' && x !== 'md5');
-    if(stat.type === "file"){
-      if(d.kind === "E"){
+    while(true){
+      if(d.kind === "E" && isLastPathMD5(d.path)){
+        let objectPath = removeLast(d.path);
+        let stat = getStat(curr, objectPath);
+        if(stat.type !== 'file'){
+          break;
+        }
         edited.push(stat);
-      } else if (d.kind === "A"){
+      } else if(d.kind === "N") {
+        let stat = getStat(curr, d.path);
         added.push(stat);
+      } else if(d.kind === "D"){
+        let stat = getStat(prev, d.path);
+        deleted.push(stat);
       }
+      break;
     }
     applyChange(prev, curr, d);
   });
-  return {edited, added};
+  return {edited, added, deleted};
 }
 
 let preparedCheckContents = false;
@@ -90,9 +119,10 @@ module.exports = function(replContext, contentsPath, logger, contentsLookupMap
       let {contents} = yield whenContentsLookupMap;
       let currentTree = fsJetpack.inspectTree(contentsPath, currentInspectOptions);
       mapChildrenToObject(currentTree);
-      let {edited, added} = diff(previousTree, currentTree);
-      yield rebuildLookupMap(edited, contents, loadContentPlugin);
-      yield insertNewFiles(added, contents, loadContentPlugin);
+      let {edited, added, deleted} = diff(previousTree, currentTree);
+      yield rebuildLookupMap(edited, contents, loadContentPlugin, logger);
+      yield insertNewFiles(added, contents, loadContentPlugin, logger);
+      yield deleteInexistentFiles(deleted, contents, loadContentPlugin, logger);
     })();
   }
 }
