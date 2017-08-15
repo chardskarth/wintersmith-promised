@@ -1,5 +1,9 @@
-module.exports = function(){
+module.exports = function(util){
   class TemplatePlugin{
+    constructor(filepath){
+      util.assertFilepath(filepath);
+      this.filepath = filepath;
+    }
     render(){
       throw new Error('Not implemented.');
     }

@@ -3,6 +3,7 @@ require("./../src-environment/test/cwdutil_spec.js");
 require("./test-util");
 require("./test-mixin");
 require("./test-contentplugin");
+require("./test-templateplugin");
 require("./test-contenttree");
 require("./test-injector");
 // require("./test-directoryable");
