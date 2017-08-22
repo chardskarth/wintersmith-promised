@@ -108,10 +108,23 @@ module.exports = function(logger, util, config, contentLoader, templateLoader
 
   let expressApp;
 
+  function _getAutoReloader(){
+    let whenPrepared;
+    return function(req, res, next){
+      if(!whenPrepared){
+        whenPrepared = replLoader.repl('prepareCheckContents');
+      }
+      whenPrepared
+        .then(() => replLoader.repl('checkContents'))
+        .then(() => next());
+    }
+  }
+
   function preview(){
     let defer = Promise.defer();
     if(!expressApp){
       expressApp = express();
+      expressApp.use(_getAutoReloader());
       expressApp.use(_getExpressHandler());
       let {port, hostname: host} = config;
       host = host || 'localhost';

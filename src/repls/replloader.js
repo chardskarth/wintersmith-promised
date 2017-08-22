@@ -10,6 +10,7 @@ module.exports = function(logger, util, ReplPlugin){
   let {readDirectoryAndResolve} = util;
   let registeredReplFunctions = {};
   let replPlugins = [];
+  let replActions = {};
 
   let mainRetVal = {}
   function registerFunctionToMainRetVal(obj){
@@ -35,7 +36,7 @@ module.exports = function(logger, util, ReplPlugin){
       let key = keysToRegister[ii];
       let pluginName = registeredReplFunctions[key].name;
       let pluginInstance = uniqueReplPlugins[pluginName];
-      replContext[key] = pluginInstance[key].bind(pluginInstance);
+      replActions[key] = replContext[key] = pluginInstance[key].bind(pluginInstance);
     }
   }
 
@@ -63,9 +64,14 @@ module.exports = function(logger, util, ReplPlugin){
     });
   }
 
+  let repl = function(key){
+    return replActions[key]();
+  }
+
   registerFunctionToMainRetVal({
     loadReplPlugins
     , registerReplPlugin
+    , repl
   });
 
   return mainRetVal;

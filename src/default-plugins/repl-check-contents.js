@@ -105,7 +105,7 @@ module.exports = function(contentsPath, logger, ReplPlugin, replLoader
     prepareCheckContents(){
       if(preparedCheckContents){
         console.log('prepareCheckContents already called');
-        return;
+        return whenCurrentTree;
       }
       whenContentsLookupMap = contentsLookupMap();
       whenCurrentTree = fsJetpack.inspectTreeAsync(contentsPath, currentInspectOptions)
@@ -115,13 +115,13 @@ module.exports = function(contentsPath, logger, ReplPlugin, replLoader
         return contentTree;
       });
       preparedCheckContents = true;
+      return whenCurrentTree;
     }
     checkContents(){
       if(!preparedCheckContents){
         console.log('call prepareCheckContents first');
         return;
       }
-      console.log('checking contentsPath for changes');
       return Promise.coroutine(function* (){
         let previousTree = yield whenCurrentTree;
         let {contents} = yield whenContentsLookupMap;
