@@ -5,6 +5,7 @@ let Promise = require('bluebird');
 let {isFunction: _isFunction, isObject: _isObject} = require('./injector-util');
 
 function pushArrInvokePromise(fnToInvoke, dependencyName){
+  dependencyName = dependencyName.trim();
   let defer = Promise.defer();
   let bindedInvokeFn = function(defer, fnToInvoke, dependencyName){
     if(!defer.promise.isPending()){
@@ -43,7 +44,6 @@ function execArrInvokePromise(){
     })
     .forEach(({bindedInvokeFn}) => {
       bindedInvokeFn();
-      // process.nextTick(bindedInvokeFn);
     });
 }
 
@@ -103,24 +103,32 @@ module.exports = function(InjectorClass){
   }
 
   InjectorClass.prototype.assertInvokeResolved = function(){
-    let unresolvedCount = getArrInvokePromise.call(this)
-      .filter(({defer}) => {
+    let arrInvokePromise = getArrInvokePromise.call(this);
+    let pendingCount = arrInvokePromise
+      .filter(({defer, dependencyName}) => {
         return defer.promise.isPending();
       });
+    let failedCount = arrInvokePromise
+      .filter(({defer, dependencyName}) => {
+        return defer.promise.isRejected();
+      });
     let errorMessage = "";
-    unresolvedCount.forEach(({fnToInvoke, dependencyName}) => {
-      errorMessage += `${fnToInvoke.name} not yet resolved. missing dependencies: `;
+    pendingCount.forEach(({fnToInvoke, dependencyName}) => {
+      errorMessage += `${fnToInvoke.name || dependencyName || '<unknown function>'} not yet resolved. missing dependencies: `;
       let paramsArr = this._getParamsName(fnToInvoke);
       let missingDependencies = paramsArr.filter(x => {
         return !this._dependencies[x]
       });
       errorMessage += `${missingDependencies.join(", ").trim()}; `;
     });
+
+    failedCount.forEach(({defer, fnToInvoke, dependencyName}) => {
+      errorMessage += `${fnToInvoke.name || dependencyName || '<unknown function>'} failed. ${defer.promise.reason()};`;
+      // throw defer.promise.reason();
+    });
+
     if(errorMessage){
       throw this._createError(errorMessage);
     }
   }
-
-
-
 }

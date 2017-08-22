@@ -1,6 +1,6 @@
+"use strict";
+
 let minimatch = require('minimatch');
-let fs = require('fs');
-let path = require('path');
 let assert = require('assert');
 let Promise = require('bluebird');
 let _ = require('lodash');
@@ -43,13 +43,12 @@ module.exports = function(logger, util, mixin, directoryable, contentsPath
   }
 
   function initializeFromDirectory(){
-    let toMerge = {}
     let {
       filterIgnoreContents: filter
       , directoryStat, getDirectoryName
     } = util;
     let readDirectoryResolve = function(directory){
-      return util.readDirectoryAndResolvePromised(directory, contentsPath);
+      return util.readDirectoryAndResolve(directory, contentsPath);
     }
     let loadDirectory = function(resolvedFilename, parentDirectory, directoryName){
       return Promise.coroutine(function* (){
@@ -81,8 +80,8 @@ module.exports = function(logger, util, mixin, directoryable, contentsPath
   function runGenerator(contents, generator){
     var resolve = function(root, items){
       var results = [];
-      for (key in items) {
-        item = items[key];
+      for (let key in items) {
+        let item = items[key];
         if (item instanceof ContentPlugin) {
           item.parent = root;
           item.setBase({}, generator, 'generator');

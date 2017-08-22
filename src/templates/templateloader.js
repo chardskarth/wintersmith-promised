@@ -1,3 +1,5 @@
+"use strict";
+
 let Promise = require('bluebird');
 let _ = require('lodash');
 let minimatch = require('minimatch');
@@ -42,7 +44,7 @@ module.exports = function(logger, util, templatesPath){
 
   let loadTemplates = function(){
     return Promise.coroutine(function* (){
-      let filenames = readDirectoryAndResolve(templatesPath, true);
+      let filenames = yield readDirectoryAndResolve(templatesPath, true);
       return Promise.all(filenames.map(loadTemplate))
     })();
   }
@@ -65,8 +67,7 @@ module.exports = function(logger, util, templatesPath){
   }
 
   registerFunctionToMainRetVal({
-    loadTemplates
-    , getTemplates
+    getTemplates
     , registerTemplatePlugin
   });
 

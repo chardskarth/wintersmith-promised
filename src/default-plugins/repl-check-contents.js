@@ -1,6 +1,8 @@
+"use strict";
+
 let fsJetpack = require("fs-jetpack");
 let Promise = require('bluebird');
-let {observableDiff: deepDiff, applyChange} = require('deep-diff');
+let { observableDiff: deepDiff, applyChange} = require('deep-diff');
 let _ = require('lodash');
 
 function mapChildrenToObject(tree){
@@ -13,7 +15,7 @@ function mapChildrenToObject(tree){
     curr.children = mapChildrenToObject(curr);
     return prev;
   }, {});
-  return tree.children = newChildren;
+  return (tree.children = newChildren);
 }
 
 function rebuildLookupMap(arrEdited, contents, loadContentPlugin){
@@ -84,8 +86,9 @@ function diff(prev, curr){
 }
 
 let preparedCheckContents = false;
-module.exports = function(replContext, contentsPath, logger, contentsLookupMap
-    , loadContentPlugin, logger){
+module.exports = function(contentsPath, logger, ReplPlugin, replLoader
+    , contentLoader){
+  let {contentsLookupMap, loadContentPlugin} = contentLoader;
   let currentInspectOptions = {
     checksum: 'md5'
     , relativePath: true
@@ -93,36 +96,43 @@ module.exports = function(replContext, contentsPath, logger, contentsLookupMap
   let whenContentsLookupMap;
   let whenCurrentTree;
 
-  replContext.prepareCheckContents = function(){
-    if(preparedCheckContents){
-      console.log('prepareCheckContents already called');
-      return;
+  class CheckContents extends ReplPlugin{
+    constructor(replContext){
+      super();
+      this.replContext = replContext;
     }
-    whenContentsLookupMap = contentsLookupMap();
-    whenCurrentTree = fsJetpack.inspectTreeAsync(contentsPath, currentInspectOptions)
-    .then(x => {
-      mapChildrenToObject(x);
-      replContext.previousTree = x;
-      return x;
-    });
-    preparedCheckContents = true;
-  }
 
-  replContext.checkContents = function(){
-    if(!preparedCheckContents){
-      console.log('call prepareCheckContents first');
-      return;
+    prepareCheckContents(){
+      if(preparedCheckContents){
+        console.log('prepareCheckContents already called');
+        return;
+      }
+      whenContentsLookupMap = contentsLookupMap();
+      whenCurrentTree = fsJetpack.inspectTreeAsync(contentsPath, currentInspectOptions)
+      .then(contentTree => {
+        mapChildrenToObject(contentTree);
+        this.replContext.previousTree = contentTree;
+        return contentTree;
+      });
+      preparedCheckContents = true;
     }
-    console.log('checking contentsPath for changes');
-    return Promise.coroutine(function* (){
-      let previousTree = yield whenCurrentTree;
-      let {contents} = yield whenContentsLookupMap;
-      let currentTree = fsJetpack.inspectTree(contentsPath, currentInspectOptions);
-      mapChildrenToObject(currentTree);
-      let {edited, added, deleted} = diff(previousTree, currentTree);
-      yield rebuildLookupMap(edited, contents, loadContentPlugin, logger);
-      yield insertNewFiles(added, contents, loadContentPlugin, logger);
-      yield deleteInexistentFiles(deleted, contents, loadContentPlugin, logger);
-    })();
+    checkContents(){
+      if(!preparedCheckContents){
+        console.log('call prepareCheckContents first');
+        return;
+      }
+      console.log('checking contentsPath for changes');
+      return Promise.coroutine(function* (){
+        let previousTree = yield whenCurrentTree;
+        let {contents} = yield whenContentsLookupMap;
+        let currentTree = fsJetpack.inspectTree(contentsPath, currentInspectOptions);
+        mapChildrenToObject(currentTree);
+        let {edited, added, deleted} = diff(previousTree, currentTree);
+        yield rebuildLookupMap(edited, contents, loadContentPlugin, logger);
+        yield insertNewFiles(added, contents, loadContentPlugin, logger);
+        yield deleteInexistentFiles(deleted, contents, loadContentPlugin, logger);
+      })();
+    }
   }
+  replLoader.registerReplPlugin(CheckContents);
 }

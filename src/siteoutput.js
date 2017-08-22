@@ -1,16 +1,19 @@
+"use strict";
+
 let express = require('express');
 let {Stream} = require('stream');
 let Promise = require('bluebird');
+let nodeRepl = require('repl');
 let chalk = require('chalk');
 let url = require('url');
 let mime = require('mime');
-let enableDestroy = require('server-destroy');
 
 module.exports = function(logger, util, config, contentLoader, templateLoader
-    , ResultHelperFactory){
+    , ResultHelperFactory, replLoader){
   let {normalizeUrl, colorCode, pump} = util;
   let {contentsLookupMap, generatorsLookupMap} = contentLoader;
   let {getTemplates} = templateLoader;
+  let {loadReplPlugins} = replLoader;
 
   let {ResultHelper: ResultHelperClass
     , createInstance: createResultHelper
@@ -42,6 +45,7 @@ module.exports = function(logger, util, config, contentLoader, templateLoader
       let retVal = createResultHelper(null, responseBody);
       return Promise.coroutine(function* (){
         let uri = normalizeUrl(url.parse(req.originalUrl).pathname);
+        let generatorLookup;
         let {contents, map: lookup} = yield contentsLookupMap();
         ({contents, map: generatorLookup} = yield generatorsLookupMap(contents));
         let templates = yield getTemplates();
@@ -103,30 +107,34 @@ module.exports = function(logger, util, config, contentLoader, templateLoader
   }
 
   let expressApp;
+
   function preview(){
     let defer = Promise.defer();
     if(!expressApp){
       expressApp = express();
       expressApp.use(_getExpressHandler());
-      let {port, baseUrl, hostname: host} = config;
+      let {port, hostname: host} = config;
       host = host || 'localhost';
-      let serverUrl = "http://" + host + ":" + port + baseUrl;
-      expressApp.listen(port, host, function(err){
+      expressApp.listen(port, function(err){
         if(err){
           defer.reject(err);
         }
         defer.resolve();
       });
     }
+    repl();
     return defer.promise;
   }
-  function getExpressApp(){
-    return expressApp;
+
+  function build(){ }
+
+  function repl(){ 
+    let writer = function(output){
+      return chalk.bold(output);
+    }
+    let replInstance = nodeRepl.start({writer});
+    let replContext = replInstance.context;
+    loadReplPlugins(replContext);
   }
-
-  function build(){
-
-  }
-
-  return {preview, build, getExpressApp};
+  return {preview, build};
 }

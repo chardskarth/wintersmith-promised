@@ -1,9 +1,14 @@
+"use strict";
+
 let { relative, resolve, join, basename, parse } = require('path');
-let { readFileSync, existsSync, readdirSync, statSync } = require('fs');
+let { readFileSync, existsSync, readdir, stat } = require('fs');
 let _ = require("lodash");
 let Promise = require('bluebird');
 let chalk = require('chalk');
 let assert = require('assert');
+
+let whenReaddir = Promise.promisify(readdir);
+let whenStat = Promise.promisify(stat);
 
 module.exports = function (logger) {
   let mainHelpers = {};
@@ -146,50 +151,54 @@ let fileHelpers = {
     return JSON.parse(buffer.toString());
   }
   , readDirectory(directory) {
-    return readdirSync(directory);
+    return whenReaddir(directory);
   }
   , readDirectoryRecursive(directory) {
-    var result = [];
-    var walk = function (dir) {
-      var filenames = this.readDirectory(join(directory, dir));
-      filenames.forEach(function (filename) {
+    let result = [];
+    let self = this;
+    let walk = function*(dir){
+      let filenames = yield self.readDirectory(join(directory, dir));
+      return Promise.map(filenames, function(filename){
         var relname = join(dir, filename);
-        var stat = statSync(join(directory, relname));
+        return Promise.props({
+          relname, stat: whenStat(join(directory, relname))
+        })
+      })
+      .each(function({relname, stat}){
         if (stat.isDirectory()) {
-          walk(relname);
+          return Promise.coroutine(walk)(relname);
         } else {
-          result.push(relname);
+          return result.push(relname);
         }
       });
-    }.bind(this);
-    walk('');
-    return result;
+    }
+    return Promise.coroutine(walk)('')
+      .then( () => result );
   }
   , readDirectoryAndResolve(directory, relativeDirectory, isRecursive) {
-    if (arguments.length == 1 || typeof relativeDirectory === "boolean") {
-      isRecursive = relativeDirectory || false;
-      relativeDirectory = directory;
-    }
-    let filenames = isRecursive
-      ? this.readDirectoryRecursive(directory)
-      : this.readDirectory(directory);
-    let reldir = this.pathRelative(relativeDirectory, directory)
-    filenames.sort();
-    return filenames.map((filename) => {
-      return {
-        full: join(directory, filename)
-        , relative: join(reldir, filename)
-      }
-    });
-  }
-  , readDirectoryAndResolvePromised() {
     let args = Array.from(arguments);
-    return Promise.cast(this.readDirectoryAndResolve.apply(null, args));
+    let self = this;
+    return Promise.coroutine(function* (){
+      if (args.length === 1 || typeof relativeDirectory === "boolean") {
+        isRecursive = relativeDirectory || false;
+        relativeDirectory = directory;
+      }
+      let filenames = isRecursive
+        ? yield self.readDirectoryRecursive(directory)
+        : yield self.readDirectory(directory);
+      let reldir = self.pathRelative(relativeDirectory, directory)
+      filenames.sort();
+      return filenames.map((filename) => {
+        return {
+          full: join(directory, filename)
+          , relative: join(reldir, filename)
+        }
+      });
+    })();
   }
   , directoryStat({ full }) {
-    return Promise.coroutine(function* () {
-      return statSync(full).isDirectory();
-    })();
+    return whenStat(full)
+      .then(x => x.isDirectory());
   }
   , getDirectoryName({ full }) {
     return this.pathBasename(full);

@@ -120,15 +120,24 @@ describe("Injector", function(){
       let noNeed2 = injector.getDependencies("noNeed");
       expect(noNeed2).to.deep.equal(result);
     });
+    
     it("resolves immediately if dependency is met", function(){
-      let result = {a: 3, b: 2, c:'1'};
-      let injector = new Injector({result});
-      function noNeed(result){
-        return result;
-      }
-      injector.autoInvoke(noNeed, "noNeed");
-      let noNeed2 = injector.getDependencies("noNeed");
-      expect(noNeed2).to.deep.equal(result);
+      return Promise.coroutine(function* (){
+        let result = {a: 3, b: 2, c:'1'};
+        let injector = new Injector({result});
+        function noNeed(result){
+          return result;
+        }
+        function anotherNeed(noNeed){
+          return noNeed;
+        }
+        let pendingPromise = injector.autoInvoke(anotherNeed);
+        injector.autoInvoke(noNeed, "noNeed");
+        let noNeed2 = injector.getDependencies("noNeed");
+        let anotherNeed2 = yield pendingPromise;
+        expect(noNeed2).to.deep.equal(result);
+        expect(anotherNeed2).to.deep.equal(noNeed2);
+      })();
     });
     it("throws when dependencyName is existing", function(){
       let result = {a: 3, b: 2, c:'1'};
@@ -165,7 +174,7 @@ describe("Injector", function(){
     });
     it("throws on self dependency", function(){
       let injector = new Injector();
-      function ClassA(objectA){ console.log('asdf');}
+      function ClassA(objectA){ }
       shouldThrow(function(){
         injector.autoInvoke(ClassA, "objectA");
       }, function(err){
@@ -229,7 +238,7 @@ describe("Injector", function(){
     describe("assertInvokeResolved", function(){
       it("throws on pending invokes", function(){
         let injector = new Injector();
-        function ClassA(objectB, objectC){ console.log('asdf');}
+        function ClassA(objectB, objectC){ }
         function ClassD(objectA, objectE){}
         function ClassE(){}
         // function ClassB(){}
@@ -244,6 +253,7 @@ describe("Injector", function(){
           expect(err.message).to.include("ClassD not yet resolved. missing dependencies: objectA");
         });
       });
+      it('throws on rejected invokes and tells the reason');
     });
   });
 });

@@ -1,7 +1,7 @@
 module.exports = {
   "wintersmithPluginsPath": "src/default-plugins/",
   "wintersmithPlugins": [
-    "repl"
+    "repl-check-contents"
   ],
   "contents": "./contents",
   "templates": "./templates",

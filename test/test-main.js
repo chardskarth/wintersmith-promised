@@ -4,6 +4,8 @@ require("./test-util");
 require("./test-mixin");
 require("./test-contentplugin");
 require("./test-templateplugin");
+require("./test-replplugin");
 require("./test-contenttree");
 require("./test-injector");
+require("./test-replloader");
 // require("./test-directoryable");

@@ -1,3 +1,5 @@
+"use strict";
+
 let Promise = require('bluebird');
 let Environment = require('./../src-environment/environment')
 let path = require('path');
@@ -16,6 +18,7 @@ function getInvoker(cwdutil, target = {}){
     }
     return injectorInstance.autoInvoke(toRequire, dependencyName)
       .catch(err => {
+        console.log('yeah');
         console.log(err);
         process.exit(1);
       });
@@ -23,6 +26,7 @@ function getInvoker(cwdutil, target = {}){
   ['setDependencies', 'getDependencies', 'assertInvokeResolved'].forEach(x => {
     retVal[x] = injectorInstance[x].bind(injectorInstance);
   });
+  retVal._dependencies = injectorInstance._dependencies;
   return retVal;
 }
 
@@ -43,11 +47,11 @@ function ensurePathsExist(util, workDir, config){
 }
 
 function createEnvInterface(util, injector){
-  let [ContentPlugin, TemplatePlugin, ContentTree, contentsPath, templatesPath
-          , logger, config, contentLoader, templateLoader] 
+  let [ContentPlugin, TemplatePlugin, ContentTree, ReplPlugin, contentsPath
+          , templatesPath, logger, config, contentLoader, templateLoader, replLoader] 
       = injector.getDependencies('ContentPlugin', 'TemplatePlugin', 'ContentTree'
-          , 'contentsPath', 'templatesPath', 'logger', 'config'
-          , 'contentLoader', 'templateLoader');
+          , 'ReplPlugin', 'contentsPath', 'templatesPath', 'logger', 'config'
+          , 'contentLoader', 'templateLoader', 'replLoader');
 
   let {contentTreeFlatten, relativeContentsPath} = util;
 
@@ -56,14 +60,16 @@ function createEnvInterface(util, injector){
 
   let {registerTemplatePlugin} = templateLoader;
 
+  let {registerReplPlugin} = replLoader;
+
   let helpers = {};
 
   return {
-    ContentPlugin, TemplatePlugin, ContentTree, contentsPath, templatesPath
-    , logger, config
+    ContentPlugin, TemplatePlugin, ContentTree, ReplPlugin, contentsPath
+    , templatesPath, logger, config
     , contentTreeFlatten, relativeContentsPath
     , registerContentPlugin, registerGenerator, contentTreeFromDirectory
-    , registerTemplatePlugin
+    , registerTemplatePlugin, registerReplPlugin
     , helpers
   };
 }
@@ -77,7 +83,7 @@ function createCliInterface(invoke){
 //load client plugins and default wintersmith plugins
 // client plugins are given 'env interface'
 // default plugins are given access to every object, that's why we pass an injector
-function loadPlugins(util, cwdutil, config, invoke){
+function loadPlugins(util, invoke){
   let pluginsEnvInterface = createEnvInterface(util, invoke);
   util.loadPlugins(pluginsEnvInterface); 
   util.loadWintersmithPlugins(invoke); 
@@ -98,6 +104,7 @@ module.exports = function(workDir, configDefaults, configPath, cliOpts){
 
   invoke("./src/contents/contentplugin", "ContentPlugin");
   invoke("./src/templates/templateplugin", "TemplatePlugin");
+  invoke("./src/repls/replplugin", "ReplPlugin");
   invoke("./src/contents/contenttree", "ContentTree");
   invoke("./src/contents/staticfileplugin", "StaticFile");
 
@@ -107,10 +114,11 @@ module.exports = function(workDir, configDefaults, configPath, cliOpts){
 
   invoke("./src/contents/contentloader", "contentLoader");
   invoke("./src/templates/templateloader", "templateLoader");
+  invoke("./src/repls/replloader", "replLoader");
   invoke("./src/resulthelper", "ResultHelperFactory");
   invoke("./src/siteoutput", "siteoutput");
 
-  invoke(loadPlugins);//(util, cwdutil, config, injector);
+  invoke(loadPlugins);
   invoke.assertInvokeResolved();
   return createCliInterface(invoke);
 }
