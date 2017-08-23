@@ -124,7 +124,7 @@ module.exports = function(logger, util, config, contentLoader, templateLoader
     let defer = Promise.defer();
     if(!expressApp){
       expressApp = express();
-      expressApp.use(_getAutoReloader());
+      config.autoReload && expressApp.use(_getAutoReloader());
       expressApp.use(_getExpressHandler());
       let {port, hostname: host} = config;
       host = host || 'localhost';
