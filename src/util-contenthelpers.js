@@ -1,8 +1,11 @@
+"use strict";
+
 let _ = require("lodash");
 let Promise = require('bluebird');
-let minimatch = require('minimatch');
+let micromatch = require('micromatch');
+let chalk = require('chalk');
 
-let minimatchOptions = {
+let micromatchOptions = {
   dot: false
 };
 
@@ -37,7 +40,7 @@ module.exports = function(util, cwdutil, ContentTree, ContentPlugin, contentsPat
         } else {
           retVal.push(value);
         }
-      };
+      }
       return retVal;
     }
     , contentTreeMerge(root, tree){
@@ -95,7 +98,7 @@ module.exports = function(util, cwdutil, ContentTree, ContentPlugin, contentsPat
               throw new Error("Plugin " + k + " specifies invalid pluginColor: " + l.pluginColor);
             }
           }
-          s = (cfn(k)) + " (" + (chalk.grey(l.pluginInfo)) + ")";
+          toPush = (cfn(k)) + " (" + (chalk.grey(l.pluginInfo)) + ")";
         }
         rv.push(pad + toPush);
       }
@@ -105,9 +108,9 @@ module.exports = function(util, cwdutil, ContentTree, ContentPlugin, contentsPat
       let arrIgnore = config.ignore || [];
       let retVal = filenames;
       if (arrIgnore.length > 0) {
-        retVal = filenames.filter(function(filename, i, filenames){
+        retVal = filenames.filter(function(filename){
           let include = !arrIgnore.some((patternIgnore) => {
-            return minimatch(filename.relative, patternIgnore, minimatchOptions);
+            return micromatch.isMatch(filename.relative, patternIgnore, micromatchOptions);
           });
           return include;
         });
@@ -124,9 +127,9 @@ module.exports = function(util, cwdutil, ContentTree, ContentPlugin, contentsPat
         case '/':
           return require.resolve(module);
         default:
-          nodeDir = this.resolveWorkDirPath('node_modules');
+          let nodeDir = this.resolveWorkDirPath('node_modules');
           try {
-            return require.resolve(join(nodeDir, module));
+            return require.resolve(util.pathJoin(nodeDir, module));
           } catch (error) {
             return require.resolve(module);
           }
@@ -166,7 +169,6 @@ module.exports = function(util, cwdutil, ContentTree, ContentPlugin, contentsPat
       })();
     }
     , loadWintersmithPlugins(invoke){
-      let self = this;
       return Promise.coroutine(function* (){
         let resolvedCWDPlugins = config.wintersmithPlugins
           .map(x => util.pathJoin(config.wintersmithPluginsPath, x))

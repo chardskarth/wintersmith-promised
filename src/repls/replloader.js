@@ -1,15 +1,10 @@
 "use strict";
-let Promise = require('bluebird');
 let _ = require('lodash');
-let minimatch = require('minimatch');
-let chalk = require('chalk');
 let assert = require('assert');
 
 
-module.exports = function(logger, util, ReplPlugin){
-  let {readDirectoryAndResolve} = util;
+module.exports = function(logger, ReplPlugin){
   let registeredReplFunctions = {};
-  let replPlugins = [];
   let replActions = {};
 
   let mainRetVal = {}

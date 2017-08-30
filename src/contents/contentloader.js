@@ -1,19 +1,18 @@
 "use strict";
 
-let minimatch = require('minimatch');
+let micromatch = require('micromatch');
 let assert = require('assert');
 let Promise = require('bluebird');
 let _ = require('lodash');
 
 module.exports = function(logger, util, mixin, directoryable, contentsPath
     ,ContentTree, StaticFile, ContentPlugin){
-  let {buildLookupMap, contentTreeMerge, readDirectoryAndResolve
-      , relativeContentsPath} = util;
+  let {buildLookupMap, contentTreeMerge} = util;
 
   let contentPlugins = [];
   let generators = [];
   let contents;
-  let minimatchOptions = {
+  let micromatchOptions = {
     dot: false
   };
 
@@ -28,7 +27,7 @@ module.exports = function(logger, util, mixin, directoryable, contentsPath
     return Promise.coroutine(function* (){
       logger.silly("loading " + filepath.relative);
       let plugin = contentPlugins.find(function({pattern}){
-        return minimatch(filepath.relative, pattern, minimatchOptions)
+        return micromatch.isMatch(filepath.relative, pattern, micromatchOptions)
       })
       plugin = plugin || {
         "class": StaticFile,

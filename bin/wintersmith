@@ -1,11 +1,9 @@
+#!/bin/sh
+DIR=$(readlink -f "$0")/../index-cli.js
+node $DIR $@
+
 #!/usr/bin/env node
 
-// require('../lib/cli/').main(process.argv);
-// require('../src-promise/cli/').main(process.argv);
-require('../src/cli/').main(process.argv);
-
-//#!/bin/sh
-//#$DIR="${BASH_SOURCE[0]}" #="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-//#DIR=$(readlink -f "$0")/../index-cli.js
-//#node $DIR $@
-
+#// require('../lib/cli/').main(process.argv);
+#// require('../src-promise/cli/').main(process.argv);
+#require('../src/cli/').main(process.argv);

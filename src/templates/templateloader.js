@@ -2,7 +2,7 @@
 
 let Promise = require('bluebird');
 let _ = require('lodash');
-let minimatch = require('minimatch');
+let micromatch = require('micromatch');
 let chalk = require('chalk');
 
 
@@ -10,7 +10,7 @@ module.exports = function(logger, util, templatesPath){
   let {readDirectoryAndResolve} = util;
   let templates = {};
   let templatePlugins = [];
-  var minimatchOptions = {
+  var micromatchOptions = {
     dot: false
   };
 
@@ -25,7 +25,7 @@ module.exports = function(logger, util, templatesPath){
     return Promise.coroutine(function* (){
       try{
         let plugin = templatePlugins.find(function({pattern}){
-          return minimatch(filepath.relative, pattern, minimatchOptions)
+          return micromatch.isMatch(filepath.relative, pattern, micromatchOptions)
         })
         if(!plugin) {
           logger.info(`skipping template: ${chalk.bold(filepath.relative)}`)
