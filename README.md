@@ -4,7 +4,7 @@ This is all based on Johan Nordberg's Wintersmith. It is **exactly** the same. I
 
 - I plan to use it personally to extend its functionalities, *more than* being a static site generator. 
 - I didn't like callbacks. Going to need a better code base to understand how he did everything. (Its originally written in coffeescript);
-- I wanted to learn and train myself... read his code and converted for 9 hours straight.
+- I wanted to learn and train myself... read his code and converted.
 
 ## Resources
 
